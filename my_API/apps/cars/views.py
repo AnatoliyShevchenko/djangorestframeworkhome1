@@ -1,28 +1,51 @@
-from django.core.handlers.wsgi import WSGIRequest
 from django.db.models import QuerySet
 
-from rest_framework.views import APIView
+from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
+from rest_framework.request import Request
+
+from typing import Optional
 
 from .models import Car
+from .serializers import CarSerializer
 
 # Create your views here.
-class CarView(APIView):
+class CarView(ViewSet):
     """Car View."""
 
-    def get(
+    queryset = Car.objects.all()
+
+    def list(
         self, 
-        request: WSGIRequest, 
+        request: Request, 
         *args, 
         **kwargs
     ) -> Response:
-        cars: QuerySet[Car] = Car.objects.all()
-        result: list[dict[str, str]] = []
-        for car in cars:
-            result.append({
-                "mark" : car.mark.mark_title,
-                "model" : car.model.model_title,
-                "color" : car.color.color_title,
-                "year" : car.year_of_issue
+        cars: QuerySet[Car] = self.queryset.all()
+        serializer: CarSerializer = \
+        CarSerializer(
+            cars,
+            many=True
+        )
+        return Response({"result" : serializer.data}, status=200)
+
+    def retrieve(self, request: Request, pk: str) -> Response:
+        """GET Method. get some object."""
+
+        user: Optional[Car] = None
+        try:
+            user = self.queryset.get(
+                id=pk
+            )
+            serializer: CarSerializer = \
+            CarSerializer(user)
+        except Car.DoesNotExist:
+            return Response({
+                'message': 'error'
             })
-        return Response({"result" : result}, status=200)
+        else:
+            return Response({
+                'data': {
+                    'car': serializer.data
+                }
+            })
